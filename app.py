@@ -1,15 +1,3 @@
-Here’s the full and complete Streamlit app code for your Apple stock forecasting project, including:
-
-✅ ARIMA, SARIMA, XGBoost, and LSTM models  
-✅ Automatic best model selection based on RMSE  
-✅ Dropdown to visualize forecasts  
-✅ 30-day future forecast using the best model  
-
----
-
-## 📄 `app.py` — Complete Streamlit App
-
-```python
 import streamlit as st
 import pandas as pd
 import numpy as np
