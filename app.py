@@ -1,3 +1,15 @@
+Here’s the full and complete Streamlit app code for your Apple stock forecasting project, including:
+
+✅ ARIMA, SARIMA, XGBoost, and LSTM models  
+✅ Automatic best model selection based on RMSE  
+✅ Dropdown to visualize forecasts  
+✅ 30-day future forecast using the best model  
+
+---
+
+## 📄 `app.py` — Complete Streamlit App
+
+```python
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -123,9 +135,13 @@ if uploaded_file:
     st.subheader("📋 Model Performance Comparison")
     st.dataframe(results_df)
 
+    # Identify Best Model
+    best_model = results_df.loc[results_df['RMSE'].idxmin(), 'Model']
+    st.success(f"🏆 Best Model Based on RMSE: {best_model}")
+
     # 🔘 Model Selection Dropdown
     st.subheader("🔘 Choose a Model to Visualize Forecast")
-    model_choice = st.selectbox("Select a model", ['ARIMA', 'SARIMA', 'XGBoost', 'LSTM'])
+    model_choice = st.selectbox("Select a model", ['ARIMA', 'SARIMA', 'XGBoost', 'LSTM'], index=['ARIMA', 'SARIMA', 'XGBoost', 'LSTM'].index(best_model))
 
     st.subheader(f"📈 {model_choice} Forecast Visualization")
     if model_choice == 'ARIMA':
@@ -142,11 +158,11 @@ if uploaded_file:
 
     # 📅 30-Day Forecast
     st.subheader("📅 30-Day Future Forecast")
-    if model_choice == 'SARIMA':
+    if best_model == 'SARIMA':
         future_forecast = sarima_model.forecast(steps=30)
-    elif model_choice == 'ARIMA':
+    elif best_model == 'ARIMA':
         future_forecast = arima_model.forecast(steps=30)
-    elif model_choice == 'XGBoost':
+    elif best_model == 'XGBoost':
         future_forecast = xgb_model.predict(X_test_scaled[-30:])
     else:
         last_60 = scaled_data[-60:]
@@ -157,7 +173,8 @@ if uploaded_file:
             yhat = model.predict(X_input, verbose=0)
             temp_input.append(yhat[0][0])
             lst_output.append(yhat[0][0])
-        future_forecast = scaler_lstm.inverse_transform(np.array(lst_output).reshape(-1,1)).flatten()
+        future_forecast = scaler_lstm.inverse_transform(np.array(lst_output).
+
 
     future_dates = pd.date_range(df.index[-1] + pd.Timedelta(days=1), periods=30)
     forecast_df = pd.DataFrame({'Date': future_dates, 'Predicted_Close': future_forecast}).set_index('Date')
