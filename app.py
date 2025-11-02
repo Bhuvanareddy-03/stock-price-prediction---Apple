@@ -14,11 +14,11 @@ import warnings
 warnings.filterwarnings("ignore")
 
 st.set_page_config(layout="wide")
-st.title("📈 Apple Stock Price Forecasting App")
-st.markdown("Compare ARIMA, SARIMA, XGBoost, and LSTM models to forecast Apple stock prices.")
+st.title("📈 Apple Stock Forecasting App")
 
 # Upload CSV
 uploaded_file = st.file_uploader("Upload Apple Stock CSV", type=["csv"])
+
 if uploaded_file:
     df = pd.read_csv(uploaded_file)
     df['Date'] = pd.to_datetime(df['Date'])
@@ -26,8 +26,10 @@ if uploaded_file:
     df.set_index('Date', inplace=True)
     df = df.fillna(method='ffill')
 
-    st.subheader("📊 Historical Close Price")
-    st.line_chart(df['Close'])
+    # Sidebar controls
+    st.sidebar.header("🔧 Model Configuration")
+    model_choice = st.sidebar.selectbox("Choose Model", ['ARIMA', 'SARIMA', 'XGBoost', 'LSTM'])
+    forecast_days = st.sidebar.slider("Forecast Days", min_value=7, max_value=60, value=30)
 
     # Time Series Split
     train_size = int(len(df) * 0.9)
@@ -38,18 +40,14 @@ if uploaded_file:
     arima_pred = arima_model.predict(start=len(train), end=len(train)+len(test)-1, typ='levels')
     arima_pred.index = test.index
     mse_arima = mean_squared_error(test, arima_pred)
-    mae_arima = mean_absolute_error(test, arima_pred)
     rmse_arima = sqrt(mse_arima)
-    r2_arima = r2_score(test, arima_pred)
 
     # SARIMA
     sarima_model = SARIMAX(train, order=(1,1,1), seasonal_order=(1,1,1,12)).fit(disp=False)
     sarima_pred = sarima_model.predict(start=len(train), end=len(train)+len(test)-1, typ='levels')
     sarima_pred.index = test.index
     mse_sarima = mean_squared_error(test, sarima_pred)
-    mae_sarima = mean_absolute_error(test, sarima_pred)
     rmse_sarima = sqrt(mse_sarima)
-    r2_sarima = r2_score(test, sarima_pred)
 
     # XGBoost
     df_ml = df.copy()
@@ -72,9 +70,7 @@ if uploaded_file:
     xgb_model.fit(X_train_scaled, y_train)
     xgb_pred = xgb_model.predict(X_test_scaled)
     mse_xgb = mean_squared_error(y_test, xgb_pred)
-    mae_xgb = mean_absolute_error(y_test, xgb_pred)
     rmse_xgb = sqrt(mse_xgb)
-    r2_xgb = r2_score(y_test, xgb_pred)
 
     # LSTM
     data = df[['Close']]
@@ -107,65 +103,55 @@ if uploaded_file:
     lstm_pred = scaler_lstm.inverse_transform(lstm_pred)
     y_test_actual = scaler_lstm.inverse_transform(y_test_lstm.reshape(-1,1))
     mse_lstm = mean_squared_error(y_test_actual, lstm_pred)
-    mae_lstm = mean_absolute_error(y_test_actual, lstm_pred)
     rmse_lstm = sqrt(mse_lstm)
-    r2_lstm = r2_score(y_test_actual, lstm_pred)
 
-    # Model Comparison Table
-    results_df = pd.DataFrame({
-        'Model': ['ARIMA', 'SARIMA', 'XGBoost', 'LSTM'],
-        'MSE': [mse_arima, mse_sarima, mse_xgb, mse_lstm],
-        'MAE': [mae_arima, mae_sarima, mae_xgb, mae_lstm],
-        'RMSE': [rmse_arima, rmse_sarima, rmse_xgb, rmse_lstm],
-        'R²': [r2_arima, r2_sarima, r2_xgb, r2_lstm]
-    }).round(4)
+    # Best model button
+    scores = {'ARIMA': rmse_arima, 'SARIMA': rmse_sarima, 'XGBoost': rmse_xgb, 'LSTM': rmse_lstm}
+    best_model = min(scores, key=scores.get)
+    if st.button("🏆 Show Best Model"):
+        st.info(f"Best Model: {best_model} (RMSE: {scores[best_model]:.2f})")
 
-    st.subheader("📋 Model Performance Comparison")
-    st.dataframe(results_df)
+    # Historical chart
+    st.subheader("📊 Historical Closing Price")
+    st.line_chart(df['Close'])
 
-    # Identify Best Model
-    best_model = results_df.loc[results_df['RMSE'].idxmin(), 'Model']
-    st.success(f"🏆 Best Model Based on RMSE: {best_model}")
-
-    # 🔘 Model Selection Dropdown
-    st.subheader("🔘 Choose a Model to Visualize Forecast")
-    model_choice = st.selectbox("Select a model", ['ARIMA', 'SARIMA', 'XGBoost', 'LSTM'], index=['ARIMA', 'SARIMA', 'XGBoost', 'LSTM'].index(best_model))
-
+    # Selected model visualization
     st.subheader(f"📈 {model_choice} Forecast Visualization")
     if model_choice == 'ARIMA':
         st.line_chart(pd.DataFrame({'Actual': test, 'ARIMA Forecast': arima_pred}))
+        future_forecast = arima_model.forecast(steps=forecast_days)
     elif model_choice == 'SARIMA':
         st.line_chart(pd.DataFrame({'Actual': test, 'SARIMA Forecast': sarima_pred}))
+        future_forecast = sarima_model.forecast(steps=forecast_days)
     elif model_choice == 'XGBoost':
         xgb_pred_series = pd.Series(xgb_pred, index=X_test_index)
         y_test_series = pd.Series(y_test, index=X_test_index)
         st.line_chart(pd.DataFrame({'Actual': y_test_series, 'XGBoost Forecast': xgb_pred_series}))
+        future_forecast = xgb_model.predict(X_test_scaled[-forecast_days:])
     else:
         lstm_df = pd.DataFrame({'Actual': y_test_actual.flatten(), 'LSTM Forecast': lstm_pred.flatten()})
         st.line_chart(lstm_df)
-
-    # 📅 30-Day Forecast
-    st.subheader("📅 30-Day Future Forecast")
-    if best_model == 'SARIMA':
-        future_forecast = sarima_model.forecast(steps=30)
-    elif best_model == 'ARIMA':
-        future_forecast = arima_model.forecast(steps=30)
-    elif best_model == 'XGBoost':
-        future_forecast = xgb_model.predict(X_test_scaled[-30:])
-    else:
         last_60 = scaled_data[-60:]
         temp_input = list(last_60.reshape(-1))
         lst_output = []
-        for i in range(30):
+        for i in range(forecast_days):
             X_input = np.array(temp_input[-60:]).reshape(1, 60, 1)
             yhat = model.predict(X_input, verbose=0)
             temp_input.append(yhat[0][0])
             lst_output.append(yhat[0][0])
         future_forecast = scaler_lstm.inverse_transform(np.array(lst_output).reshape(-1,1)).flatten()
 
-
-
-    future_dates = pd.date_range(df.index[-1] + pd.Timedelta(days=1), periods=30)
+    # Future forecast chart
+    future_dates = pd.date_range(df.index[-1] + pd.Timedelta(days=1), periods=forecast_days)
     forecast_df = pd.DataFrame({'Date': future_dates, 'Predicted_Close': future_forecast}).set_index('Date')
+    st.subheader(f"📅 {forecast_days}-Day Future Forecast")
     st.line_chart(forecast_df)
     st.dataframe(forecast_df.head(10))
+
+    # Performance table
+    st.subheader("📋 Model Performance Table")
+    results_df = pd.DataFrame({
+        'Model': ['ARIMA', 'SARIMA', 'XGBoost', 'LSTM'],
+        'RMSE': [rmse_arima, rmse_sarima, rmse_xgb, rmse_lstm]
+    }).round(2)
+    st.dataframe(results_df)
