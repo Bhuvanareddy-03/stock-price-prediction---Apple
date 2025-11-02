@@ -10,7 +10,6 @@ from sklearn.preprocessing import MinMaxScaler
 from math import sqrt
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense
-from tensorflow.keras.callbacks import EarlyStopping
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -161,4 +160,6 @@ if uploaded_file:
         future_forecast = scaler_lstm.inverse_transform(np.array(lst_output).reshape(-1,1)).flatten()
 
     future_dates = pd.date_range(df.index[-1] + pd.Timedelta(days=1), periods=30)
-    forecast_df = pd.DataFrame({'Date': future_dates, 'Predicted_Close': future_forecast}).set_index('Date
+    forecast_df = pd.DataFrame({'Date': future_dates, 'Predicted_Close': future_forecast}).set_index('Date')
+    st.line_chart(forecast_df)
+    st.dataframe(forecast_df.head(10))
