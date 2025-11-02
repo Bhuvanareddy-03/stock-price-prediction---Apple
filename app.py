@@ -145,7 +145,6 @@ if uploaded_file:
     future_dates = pd.date_range(df.index[-1] + pd.Timedelta(days=1), periods=forecast_days)
     forecast_df = pd.DataFrame({'Date': future_dates, 'Predicted_Close': future_forecast}).set_index('Date')
     st.subheader(f"📅 {forecast_days}-Day Future Forecast")
-    st.line_chart(forecast_df)
     st.dataframe(forecast_df.head(10))
 
     # Performance table
