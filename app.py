@@ -161,7 +161,8 @@ if uploaded_file:
             yhat = model.predict(X_input, verbose=0)
             temp_input.append(yhat[0][0])
             lst_output.append(yhat[0][0])
-        future_forecast = scaler_lstm.inverse_transform(np.array(lst_output).
+        future_forecast = scaler_lstm.inverse_transform(np.array(lst_output).reshape(-1,1)).flatten()
+
 
 
     future_dates = pd.date_range(df.index[-1] + pd.Timedelta(days=1), periods=30)
